@@ -1,5 +1,8 @@
 %~d0
 cd %~d0%~p0
 
-perl AutoClick.pl
-pause
+start runSeleniumServer.bat
+
+timeout 10
+
+start runAutoClick.bat
