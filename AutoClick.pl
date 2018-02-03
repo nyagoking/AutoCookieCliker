@@ -6,6 +6,16 @@ use Try::Tiny;
 
 $|=1;
 
+my $savedata;
+open(my $fh, "<", "savedata.txt") or die $!;
+while ( defined(my $l = <$fh>) ) {
+    chomp $l;
+    if ( $l ne '' ) {
+        $savedata = $l;
+    }
+}
+close $fh;
+
 my $sel = WWW::Selenium->new(
     host => "localhost",
     port => 4444,
@@ -15,41 +25,9 @@ my $sel = WWW::Selenium->new(
 
 $sel->start;
 $sel->open("/cookieclicker/");
-my $savedata = '';
+$sel->get_eval("window.localStorage.setItem('CookieClickerGame', '$savedata')");
 while (1) {
     next if ( !$sel->get_eval("window.Game.ready") );
-
-    my $locator_import = '//a[text()="Import save"]';
-    &to_menu_and_click($locator_import, "import");
-    last;
-}
-
-my $locator_textarea_prompt = "id=textareaPrompt";
-my $locator_prompt_option0 = "id=promptOption0";
-
-while ( 1 ) {
-    next if ( !&is_enabled($locator_textarea_prompt) );
-    next if ( !$sel->is_visible($locator_textarea_prompt) );
-    next if ( !$sel->is_visible($locator_prompt_option0) );
-
-    my $text = &get_text($locator_textarea_prompt);
-    my $btnText = &get_text($locator_prompt_option0);
-
-    next if ( $text ne '' );
-    next if ( $btnText ne 'Load' );
-
-    open(my $fh, "<", "savedata.txt") or die $!;
-    while ( defined(my $l = <$fh>) ) {
-        chomp $l;
-        if ( $l ne '' ) {
-            $savedata = $l;
-        }
-    }
-    close $fh;
-
-    $sel->type($locator_textarea_prompt, $savedata);
-    &click($locator_prompt_option0);
-    sleep 2;
     last;
 }
 
@@ -116,17 +94,6 @@ while ( 1 ) {
     print ".";
 }
 
-sub to_menu_and_click {
-    my $locator = shift;
-    my $target_name = shift;
-    my $locator_menu_button = '//div[@id="prefsButton"]';
-
-    while (!&is_enabled($locator)) {
-        &click($locator_menu_button, "menu");
-    }
-    &click($locator, $target_name);
-}
-
 sub buy_upgrade {
     my $locator = '//div[@id="upgrades"]/div[@class="crate upgrade enabled"][1]';
     &click($locator, "upgrade");
@@ -135,11 +102,6 @@ sub buy_upgrade {
 sub buy_product {
     my $locator = '//div[@id="products"]/div[@class="product unlocked enabled"][last()]';
     &click($locator, "product");
-}
-
-sub is_enabled {
-    my $locator = shift;
-    return $sel->is_element_present($locator);
 }
 
 sub explode_wrinklers {
@@ -159,19 +121,4 @@ sub click {
         $rtn = 0;
     };
     return $rtn;
-}
-
-sub get_text {
-    my $locator = shift;
-    my $text;
-
-    while ( !defined($text) ) {
-        try {
-            $text = $sel->get_text($locator);
-        } catch {
-            print "\nERROR(get_text): $_";
-        };
-    }
-
-    return $text;
 }
